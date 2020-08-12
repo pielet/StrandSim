@@ -1,0 +1,167 @@
+<scene>
+  <description text="A hair bundle drops on the other."/>
+  <duration value="2.0"/>
+  <dt value="0.001"/>
+
+  <simplegravity fx="0.0" fy="-981.0"/>
+
+  <bucketinfo size="8.0" numcells="4"/>
+
+  <StrandParameters>
+    <radius value="0.005"/>
+    <youngsModulus value="1e10"/>
+    <poissonRatio value="0.36" />
+    <density value="1.32"/>
+    <stretchMultiplier value="1e-2"/>
+  </StrandParameters>
+ 
+  <CollisionParameters>
+    <hairHairFrictionCoefficient value="0.3"/>
+    <hairMeshFrictionCoefficient value="0.3"/>
+    <externalCollisionsRadius value="0.0055"/>
+    <selfCollisionsRadius value="0.0055"/>
+    <responseRadius value="0.005"/>
+  </CollisionParameters>
+
+  <SimulationParameters>
+    <maxNewtonIterations value="10"/>
+    <innerIterations value="3"/>
+    <postProcessIterations value="0"/>
+    <newtonTolerance value="1e-12"/>
+    <collisionTolerance value="1e-6"/>
+
+    <warmStarting value="0"/>
+    <relaxationFactor value="0.5"/>
+
+    <useQuasiNewton value="1"/>
+    <windowSize value="0"/>
+
+    <useLineSearch value="0"/>
+    <lsAlpha value="0.03"/>
+    <lsBeta value="0.5"/>
+
+    <solveCollision value="1"/>
+    <pruneExternalCollisions value="0"/>
+    <pruneSelfCollisions value="0"/>
+
+    <!-- unused parameters -->
+    <useCTRodRodCollisions value="1"/>
+    <logLevel value="4"/>
+    <statGathering value="0"/>
+
+    <numberOfThreads value="24"/>
+
+    <airDrag value="0.0005"/> 
+    <stochasticPruningFraction value="0.8"/>
+  </SimulationParameters>
+<!--
+<particle x="-1 1 1" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-1.3422430959207943 1.3256098401880276 1.1638532735934108" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-1.3800533920326536 1.7724552632574397 1.384985698601259" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-1.8186164775923641 1.8149008429852485 1.6213345779003079" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-2.169073483378819 2.0548860555174158 1.8851280290341128" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-2.0443704675725924 2.2412149596602027 2.3320404335719376" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-2.444234795405057 2.1117286123001584 2.6028573554480365" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-2.912585002496812 2.231702270775255 2.4753645917741274" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-2.9963744148088094 2.5959233487830518 2.8075126622475963" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.3203494576272887 2.371999068354438 3.115567995370222" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.3521676926003177 2.701066198710053 3.4906712126887647" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.309784434429637 3.0883423995230226 3.804073196905058" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.157064577581616 3.462960094300079 4.097906871088675" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.3275343693070063 3.8993682756068866 3.923298883305794" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.668212607205374 4.25554544752733 3.8391789663703992" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-3.9435713720527232 4.636447055623929 4.009741317348474" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.403238316551507 4.61864698148503 4.205673595178855" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.476261795032261 4.967618164401135 4.556225567195423" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.60926460893237 5.44077563269437 4.464398219999777" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.804595152789762 5.170110711510417 4.83667026981934" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.526275515992121 5.584502035879798 4.865271144984602" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.797986958927049 5.465124572968107 5.267666365044418" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.865347530429246 5.884241186355123 5.531870486492014" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.810335267616345 6.37978797352446 5.494360052392261" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.084299444240514 6.122453653023406 5.824091272356191" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.5001934823308085 6.110504544155889 6.1013805939649055" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.206699604018642 6.331520589561797 6.440516630189923" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.2339349861688556 6.677619894414699 6.800340899993212" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.218707404704365 6.540990931012799 7.281070186725843" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.6313279979165225 6.818263760178064 7.334586766062885" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.392172409859494 7.212281197373991 7.528377539544623" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.142592885745657 7.110507545125002 7.949509567358956" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.562736347912331 7.381576124927869 7.9506480937123625" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.920677257830372 7.714922246556298 7.846924093585439" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.8078467232303685 7.571265155952456 8.312361426403852" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.531946568467939 7.84308741456399 8.628576170407657" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.401147972634393 8.31863511946495 8.710710862781843" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.091557635016474 8.709725040172248 8.676033827516665" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-4.896256889458239 9.143589971881829 8.829718048622928" v="0.0 0.0 0.0" fixed="0"/>
+<particle x="-5.226941824874972 8.934389541260439 9.140977832912926" v="0.0 0.0 0.0" fixed="0"/>
+-->
+  <strand count="40" param="0">
+    <particle x="-9.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="1" group="0"/>
+    <particle x="-9.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="1" group="0"/>
+    <particle x="-8.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-8.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-7.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-7.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-6.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-6.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-5.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-5.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-4.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-4.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-3.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-3.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-2.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-2.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-1.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-1.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-0.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="-0.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="0.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="0.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="1.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="1.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="2.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="2.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="3.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="3.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="4.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="4.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="5.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="5.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="6.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="6.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="7.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="7.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="8.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="8.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="9.25 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+    <particle x="9.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0" group="0"/>
+  </strand>
+
+
+<!--
+  <particle x="-9.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="1" group="0"/>
+  <particle x="-3.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+  <particle x="2.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="0"/>
+  <particle x="9.75 -0.02 0.0" v="0.0 0.0 0.0" fixed="1" group="0"/>
+
+  <particle x="0.0 0.0 -9.75" v="0.0 0.0 0.0" fixed="3" group="1"/>
+  <particle x="0.0 0.0 -3.75" v="0.0 0.0 0.0" fixed="0"/>
+  <particle x="0.0 0.0 2.25" v="0.0 0.0 0.0" fixed="0"/>
+  <particle x="0.0 0.0 9.75" v="0.0 0.0 0.0" fixed="0"/>
+
+  <hair params="0" start="0" count="4"/>
+  <hair params="0" start="4" count="4"/>
+
+  <hair params="0" start="40" count="40"/>
+
+  <hair params="0" start="80" count="40"/>-->
+  <!--<hair params="0" start="120" count="40"/>-->
+
+  <!--<script type="translate" x="-5.0" y="0" z="0" w="0" start="0" end="0.3" group="0"/>-->
+  <!--<script type="translate" x="0" y="0" z="-10.0" w="0.0" start="1" end="2" group="1"/>-->
+
+  <distancefield usage="terminator" type="box" cx="0.0" cy="2.5" cz="0.0" rx="0.0" ry="1.0" rz="0.0" rw="0.0" ex="20.0" ey="20.0" ez="20.0" radius="0.0" group="2" inverted="1"/>
+
+</scene>  

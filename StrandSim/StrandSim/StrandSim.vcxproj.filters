@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Render">
+      <UniqueIdentifier>{9b8c5e91-a6d9-465f-8750-cab99541dbbf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{a4e23a83-0c2d-49f4-952b-136a86282920}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Control">
+      <UniqueIdentifier>{6b009051-d729-49f9-9651-dabfdb79d947}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Dynamic">
+      <UniqueIdentifier>{cfb3c571-ed87-4c6c-8207-60fb387e512b}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Render\Shader.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Render\Camera.cpp">
+      <Filter>Render</Filter>
+    </ClCompile>
+    <ClCompile Include="Control\ProblemManager.cpp">
+      <Filter>Control</Filter>
+    </ClCompile>
+    <ClCompile Include="Dynamic\StepperManager.cpp">
+      <Filter>Dynamic</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Render\Shader.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\Camera.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Timer.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Control\ProblemManager.h">
+      <Filter>Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\ElasticStrand.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Control\Parameters.h">
+      <Filter>Control</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\StrandRenderer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\StrandState.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\StrandForces.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\BandMatrix.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\NewtonStepper.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\EigenDef.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\CUDAMathDef.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\StepperManager.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\CUDAMathDef.fwd.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Render\StrandRenderer.cu">
+      <Filter>Render</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\StrandState.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\ElasticStrand.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\StrandForces.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\BandMatrix.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\NewtonSolver.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+  </ItemGroup>
+</Project>
