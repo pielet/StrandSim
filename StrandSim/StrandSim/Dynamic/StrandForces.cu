@@ -674,41 +674,6 @@ void StrandForces::computeForceAndGradient()
 	computeBending();
 }
 
-void StrandForces::computeEnergy()
-{
-	m_totalEnergy = 0.0;
-	m_state.update(m_strand->getCurrentState());
-
-	Scalar energy;
-
-	// Stretching
-	computeStretchingEnergy <<< 1, m_numEdges, m_numEdges * sizeof(Scalar), m_stream >>> (
-		m_params->m_ks * m_params->m_stretchMultiplier, m_stretchingEnergy, m_state.m_lengths, m_strand->getRestLengths());
-	cudaMemcpyAsync(&energy, m_stretchingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
-	cudaStreamSynchronize(m_stream);
-	m_totalEnergy += energy;
-
-	// Fixing
-	int n_fixed = m_strand->getNumFixed();
-	computeFixingEnergy <<< 1,n_fixed, n_fixed * sizeof(Scalar), m_stream >>> (m_params->m_ks, m_fixingEnergy, 
-		m_strand->getFixedIndices(), m_state.m_x, m_strand->getFixedPositions());
-	cudaMemcpyAsync(&energy, m_fixingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
-	cudaStreamSynchronize(m_stream);
-	m_totalEnergy += energy;
-
-	computeTwistingEnergy <<< 1, m_numVertices - 2, (m_numVertices - 2) * sizeof(Scalar), m_stream >>> 
-		(m_params->m_kt, m_twistingEnergy, m_state.m_twists, m_strand->getRestTwists(), m_strand->getInvVtxLengths());
-	cudaMemcpyAsync(&energy, m_twistingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
-	cudaStreamSynchronize(m_stream);
-	m_totalEnergy += energy;
-
-	computeBendingEnergy <<< 1, m_numVertices - 2, (m_numVertices - 2) * sizeof(Scalar), m_stream >> >
-		(m_params->m_kb, m_bendingEnergy, m_state.m_kappas, m_strand->getRestKappas(), m_strand->getInvVtxLengths());
-	cudaMemcpyAsync(&energy, m_bendingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
-	cudaStreamSynchronize(m_stream);
-	m_totalEnergy += energy;
-}
-
 void StrandForces::computeFixing()
 {
 	int n_fixed = m_strand->getNumFixed();
@@ -768,4 +733,39 @@ void StrandForces::computeBending()
 
 	computeBendingForce << < 1, nb, 0, m_stream >> > (kb, m_totalForces, kappas, restKappas, ilens, m_gradKappas);
 	computeBendingGradient << < 1, nb, 0, m_stream >> > (kb, m_totalGradient.getMatrix(), kappas, restKappas, ilens, m_gradKappas, m_hessKappas);
+}
+
+void StrandForces::computeEnergy()
+{
+	m_totalEnergy = 0.0;
+	m_state.update(m_strand->getCurrentState());
+
+	Scalar energy;
+
+	// Stretching
+	computeStretchingEnergy <<< 1, m_numEdges, m_numEdges * sizeof(Scalar), m_stream >>> (
+		m_params->m_ks * m_params->m_stretchMultiplier, m_stretchingEnergy, m_state.m_lengths, m_strand->getRestLengths());
+	cudaMemcpyAsync(&energy, m_stretchingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+	cudaStreamSynchronize(m_stream);
+	m_totalEnergy += energy;
+
+	// Fixing
+	int n_fixed = m_strand->getNumFixed();
+	computeFixingEnergy <<< 1,n_fixed, n_fixed * sizeof(Scalar), m_stream >>> (m_params->m_ks, m_fixingEnergy, 
+		m_strand->getFixedIndices(), m_state.m_x, m_strand->getFixedPositions());
+	cudaMemcpyAsync(&energy, m_fixingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+	cudaStreamSynchronize(m_stream);
+	m_totalEnergy += energy;
+
+	computeTwistingEnergy <<< 1, m_numVertices - 2, (m_numVertices - 2) * sizeof(Scalar), m_stream >>> 
+		(m_params->m_kt, m_twistingEnergy, m_state.m_twists, m_strand->getRestTwists(), m_strand->getInvVtxLengths());
+	cudaMemcpyAsync(&energy, m_twistingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+	cudaStreamSynchronize(m_stream);
+	m_totalEnergy += energy;
+
+	computeBendingEnergy <<< 1, m_numVertices - 2, (m_numVertices - 2) * sizeof(Scalar), m_stream >> >
+		(m_params->m_kb, m_bendingEnergy, m_state.m_kappas, m_strand->getRestKappas(), m_strand->getInvVtxLengths());
+	cudaMemcpyAsync(&energy, m_bendingEnergy, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+	cudaStreamSynchronize(m_stream);
+	m_totalEnergy += energy;
 }

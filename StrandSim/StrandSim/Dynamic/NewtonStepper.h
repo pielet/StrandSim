@@ -1,59 +1,68 @@
 #ifndef NEWTON_STEPPER_H
 #define NEWTON_STEPPER_H
 
+#include <iostream>
 #include "../Utils/Timer.h"
 #include "../Utils/CUDAMathDef.fwd.h"
 #include "../Control/Parameters.h"
 #include "StrandForces.h"
-
 
 class ElasticStrand;
 struct SimulationParameters;
 
 struct StepperTiming
 {
-	double hessian;
-	double gradient;
-	double factorize;
+	//double stretching_grad;
+	//double stretching_hess;
+	//double twisting_grad;
+	//double twisting_hess;
+	//double bending_grad;
+	//double bending_hess;
+	double construct;
 	double solveLinear;
 	double lineSearch;
+	double check;
 
-	StepperTiming() : hessian(0), gradient(0), factorize(0), solveLinear(0), lineSearch(0) {}
-	StepperTiming(double h, double g, double f, double s, double l) :
-		hessian(h), gradient(g), factorize(f), solveLinear(s), lineSearch(l) {}
+	StepperTiming() : construct(0), solveLinear(0), lineSearch(0), check(0) {}
 
 	void reset()
 	{
-		hessian = 0;
-		gradient = 0;
-		factorize = 0;
+		construct = 0;
 		solveLinear = 0;
 		lineSearch = 0;
+		check = 0;
 	}
 
 	double sum() const
 	{
-		return hessian + gradient + factorize + solveLinear + lineSearch;
+		return construct + solveLinear + lineSearch + check;
 	}
 
 	const StepperTiming& operator+=(const StepperTiming& other)
 	{
-		hessian += other.hessian;
-		gradient += other.gradient;
-		factorize += other.factorize;
-		solveLinear += other.factorize;
+		construct += other.construct;
+		solveLinear += other.solveLinear;
 		lineSearch += other.lineSearch;
+		check += other.check;
 		return *this;
 	}
 
 	const StepperTiming& operator/=(int time)
 	{
-		hessian /= time;
-		gradient /= time;
-		factorize /= time;
+		construct /= time;
 		solveLinear /= time;
 		lineSearch /= time;
+		check /= time;
 		return *this;
+	}
+
+	void print() const
+	{
+		std::cout << "CONS: " << construct 
+			<< "  SOLVE: " << solveLinear 
+			<< "  LS: " << lineSearch 
+			<< "  CHECK: " << check 
+			<< "  SUM: " << sum() << std::endl;
 	}
 };
 
@@ -68,7 +77,6 @@ public:
 	void commitVelocities();
 
 	const StepperTiming& getTiming() { return m_timing; }
-	void outputTiming() const;
 
 	void setGlobalIndex(int idx) { m_globalIndex = idx; }
 	int getGlobalIndex() const { return m_globalIndex; }
@@ -90,6 +98,7 @@ protected:
 	const SimulationParameters* m_params;
 
 	StepperTiming m_timing;
+	EventTimer m_timer;
 
 	Scalar m_dt;
 	Scalar m_alpha;

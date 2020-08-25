@@ -3,11 +3,22 @@
 
 #include "../Control/Parameters.h"
 #include "../Utils/CUDAMathDef.fwd.h"
+#include "../Utils/Timer.h"
 #include "BandMatrix.h"
 #include "StrandState.h"
 
 class StrandParameters;
 class ElasticStrand;
+
+//struct ForcesTiming
+//{
+//	double stretching_grad;
+//	double stretching_hess;
+//	double twisting_grad;
+//	double twisting_hess;
+//	double bending_grad;
+//	double bending_hess;
+//};
 
 class StrandForces
 {

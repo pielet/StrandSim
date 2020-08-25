@@ -60,7 +60,7 @@ NewtonStepper::NewtonStepper(int index, ElasticStrand* strand, const SimulationP
 	cudaMalloc((void**)& m_descentDir, m_dof * sizeof(Scalar));
 	cudaMalloc((void**)& m_tmpValue, m_dof * sizeof(Scalar));
 
-	// Init v, mass and gravity
+	// Init v0, mass and gravity
 	set<Scalar> <<< 1, m_dof, 0, stream >>> (m_dof, m_velocities, 0.0);
 	initMass <<< 1, strand->getNumVertices(), 0, stream >>> (m_mass, strand->getVertexMasses(), strand->getEdgeInertia());
 	initGravity <<< 1, strand->getNumVertices(), 0, stream >>> (m_gravity, m_mass, 0., -981.0, 0.);
@@ -86,8 +86,11 @@ void NewtonStepper::prepareStep(Scalar dt)
 
 bool NewtonStepper::performOneIteration()
 {
-	Eigen::VecXx test(m_dof);
+	//Eigen::VecXx test(m_dof);
+	Timer tt;
+
 	// Compute future forces and gradient
+	m_timer.start(m_stream);
 	add <<< 1, m_dof, 0, m_stream >>> (m_dynamics.getX(), m_strand->getX(), m_velocities, m_dt);
 	//cudaMemcpy(test.data(), m_dynamics.getX(), m_dof * sizeof(Scalar), cudaMemcpyDeviceToHost);
 	//std::cout << "new x: \n" << test << std::endl;
@@ -104,8 +107,10 @@ bool NewtonStepper::performOneIteration()
 	HessianMatrix& hessian = m_dynamics.getHessian();
 	hessian.multiplyInPlace(m_dt * m_dt);
 	hessian.addInDiagonal(m_mass);
+	m_timing.construct += m_timer.elapsedMilliseconds();
 
 	// Solve linear equation
+	m_timer.start(m_stream);
 	m_SPD = CUDASolveChol<Scalar>(&hessian, gradient, m_descentDir);
 	if (!m_SPD)
 	{
@@ -113,18 +118,23 @@ bool NewtonStepper::performOneIteration()
 		exit(-1);
 	}
 	assign <<< 1, m_dof, 0, m_stream >>> (m_descentDir, m_descentDir, -1.);
+	m_timing.solveLinear += m_timer.elapsedMilliseconds();
 
 	// Line-search
+	m_timer.start(m_stream);
 	Scalar obj_value = lineSearch(m_velocities, gradient, m_descentDir);
 	add <<< 1, m_dof, 0, m_stream >>> (m_velocities, m_velocities, m_descentDir, m_alpha);
-	
+	m_timing.lineSearch += m_timer.elapsedMilliseconds();
+
 	// Check convergence condition
+	tt.start();
 	Scalar delta_v;
 	dot <<< 1, m_dof, m_dof * sizeof(Scalar), m_stream >>> (m_tmpValue, m_descentDir, m_descentDir);
 	cudaMemcpyAsync(&delta_v, m_tmpValue, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
 	cudaStreamSynchronize(m_stream);
 	delta_v = m_alpha * sqrt(delta_v);
-	std::cout << "Step size: " << m_alpha << "  Residual: " << obj_value << " Delta v: " << delta_v << std::endl;
+	//std::cout << "Step size: " << m_alpha << "  Residual: " << obj_value << " Delta v: " << delta_v << std::endl;
+	m_timing.check += tt.elapsedMilliseconds();
 
 	if (delta_v / m_dof < m_params->m_newtonTolerance)
 		return true;

@@ -159,6 +159,8 @@ int main(int argc, char** argv)
 	delete g_camera;
 	delete g_problem;
 
+	cudaDeviceReset();
+
 	std::cout << "EXIT.";
 
 	return 0;

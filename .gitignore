@@ -4,6 +4,7 @@
 /StrandSim/.vs/
 /StrandSim/x64/Debug/
 /StrandSim/x64/Release/*
+/StrandSim/Scripts/
 !/StrandSim/x64/Release/freeglut.dll
 !/StrandSim/x64/Release/glew32.dll
 

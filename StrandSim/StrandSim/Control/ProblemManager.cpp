@@ -44,11 +44,11 @@ void ProblemManager::loadXMLFile(const std::string& xml_file)
 
 	// Load hairs
 	int num_strands = 0;
-	for (rapidxml::xml_node<>* nd = scene->first_node("strand"); nd; nd = nd->next_sibling("strand")) ++num_strands;
+	for (rapidxml::xml_node<>* nd = scene->first_node("Strand"); nd; nd = nd->next_sibling("Strand")) ++num_strands;
 	m_strands.reserve(num_strands);
 	m_streams.resize(num_strands);
 	int idx = 0;
-	for (rapidxml::xml_node<>* nd = scene->first_node("strand"); nd; nd = nd->next_sibling("strand"))
+	for (rapidxml::xml_node<>* nd = scene->first_node("Strand"); nd; nd = nd->next_sibling("Strand"))
 	{
 		cudaStreamCreate(&m_streams[idx]);
 		loadStrand(idx, nd, m_streams[idx]);
