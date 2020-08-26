@@ -39,6 +39,7 @@ public:
 	cusolverSpHandle_t getHandle() { return m_handle; }
 	cusparseMatDescr_t getDescr() { return m_descr; }
 
+	void multiplyVec(Scalar* out, const Scalar* in) const;
 	void multiplyInPlace(ScalarT t);
 	void addInDiagonal(ScalarT* m);
 	void setZero();

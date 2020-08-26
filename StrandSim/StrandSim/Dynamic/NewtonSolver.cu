@@ -60,6 +60,11 @@ NewtonStepper::NewtonStepper(int index, ElasticStrand* strand, const SimulationP
 	cudaMalloc((void**)& m_descentDir, m_dof * sizeof(Scalar));
 	cudaMalloc((void**)& m_tmpValue, m_dof * sizeof(Scalar));
 
+	cudaMalloc((void**)& x_k, m_dof * sizeof(Scalar));
+	cudaMalloc((void**)& r_k, m_dof * sizeof(Scalar));
+	cudaMalloc((void**)& Ap, m_dof * sizeof(Scalar));
+	cudaMalloc((void**)& p_k, m_dof * sizeof(Scalar));
+
 	// Init v0, mass and gravity
 	set<Scalar> <<< 1, m_dof, 0, stream >>> (m_dof, m_velocities, 0.0);
 	initMass <<< 1, strand->getNumVertices(), 0, stream >>> (m_mass, strand->getVertexMasses(), strand->getEdgeInertia());
@@ -74,6 +79,11 @@ NewtonStepper::~NewtonStepper()
 	cudaFree(m_savedVelocities);
 	cudaFree(m_descentDir);
 	cudaFree(m_tmpValue);
+
+	cudaFree(x_k);
+	cudaFree(r_k);
+	cudaFree(Ap);
+	cudaFree(p_k);
 }
 
 void NewtonStepper::prepareStep(Scalar dt)
@@ -111,13 +121,16 @@ bool NewtonStepper::performOneIteration()
 
 	// Solve linear equation
 	m_timer.start(m_stream);
-	m_SPD = CUDASolveChol<Scalar>(&hessian, gradient, m_descentDir);
-	if (!m_SPD)
-	{
-		std::cerr << "NewtonStepper " << m_globalIndex << " is NOT SPD" << std::endl;
-		exit(-1);
-	}
-	assign <<< 1, m_dof, 0, m_stream >>> (m_descentDir, m_descentDir, -1.);
+	//m_SPD = CUDASolveChol<Scalar>(&hessian, gradient, m_descentDir);
+	//if (!m_SPD)
+	//{
+	//	std::cerr << "NewtonStepper " << m_globalIndex << " is NOT SPD" << std::endl;
+	//	exit(-1);
+	//}
+	//assign <<< 1, m_dof, 0, m_stream >>> (m_descentDir, m_descentDir, -1.);
+	solveLinearSys(&hessian, gradient);
+	//solveLinearSysKernel <<< 1, 1, 0, m_stream >>> (m_dof, hessian.getMatrix(), gradient, x_k, r_k, p_k, Ap);
+	assign <<< 1, m_dof, 0, m_stream >>> (m_descentDir, x_k, -1.);
 	m_timing.solveLinear += m_timer.elapsedMilliseconds();
 
 	// Line-search
@@ -188,4 +201,61 @@ Scalar NewtonStepper::evaluateObjectValue(const Scalar* vel)
 	cudaStreamSynchronize(m_stream);
 
 	return 0.5 * inertia + elasticity;
+}
+
+void NewtonStepper::solveLinearSys(const HessianMatrix* A, const Scalar* b)
+{
+	EventTimer tt;
+
+	tt.start();
+	set <<< 1, m_dof, 0, m_stream >>> (m_dof, x_k, 0.);
+	A->multiplyVec(Ap, x_k);
+	add <<< 1, m_dof, 0, m_stream >>> (r_k, b, Ap, -1.0);
+	assign <<< 1, m_dof, 0, m_stream >>> (p_k, r_k);
+
+	Scalar rs_old, rs_new, alpha;
+	dot <<< 1, m_dof, m_dof * sizeof(Scalar), m_stream >>> (m_tmpValue, r_k, r_k);
+	cudaMemcpyAsync(&rs_old, m_tmpValue, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+	cudaStreamSynchronize(m_stream);
+	m_timing.init += tt.elapsedMilliseconds();
+
+	for (int k = 0; k < m_dof; ++k)
+	{
+		tt.start();
+		A->multiplyVec(Ap, p_k);
+		m_timing.multiply += tt.elapsedMilliseconds();
+
+		tt.start();
+		dot <<< 1, m_dof, m_dof * sizeof(Scalar), m_stream >>> (m_tmpValue, p_k, Ap);
+		cudaMemcpyAsync(&alpha, m_tmpValue, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+		cudaStreamSynchronize(m_stream);
+		m_timing.dot += tt.elapsedMilliseconds();
+
+		tt.start();
+		alpha = rs_old / alpha;
+		add <<< 1, m_dof, 0, m_stream >>> (x_k, x_k, p_k, alpha);
+		add <<< 1, m_dof, 0, m_stream >>> (r_k, r_k, Ap, -alpha);
+		m_timing.add += tt.elapsedMilliseconds();
+
+		tt.start();
+		dot <<< 1, m_dof, m_dof * sizeof(Scalar), m_stream >>> (m_tmpValue, r_k, r_k);
+		cudaMemcpyAsync(&rs_new, m_tmpValue, sizeof(Scalar), cudaMemcpyDeviceToHost, m_stream);
+		cudaStreamSynchronize(m_stream);
+		m_timing.dot += tt.elapsedMilliseconds();
+
+		std::cout << "residual: " << sqrt(rs_new) << std::endl;
+
+		if (sqrt(rs_new) < 1e-10) {
+			//m_timing.multiply /= k + 1;
+			//m_timing.dot /= k + 1;
+			//m_timing.add /= k + 1;
+			std::cout << "break k: " << k << std::endl;
+			break;
+		}
+
+		tt.start();
+		add <<< 1, m_dof, 0, m_stream >>> (p_k, r_k, p_k, rs_new / rs_old);
+		rs_old = rs_new;
+		m_timing.add += tt.elapsedMilliseconds();
+	}
 }

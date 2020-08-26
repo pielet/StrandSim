@@ -23,7 +23,12 @@ struct StepperTiming
 	double lineSearch;
 	double check;
 
-	StepperTiming() : construct(0), solveLinear(0), lineSearch(0), check(0) {}
+	double init;
+	double multiply;
+	double dot;
+	double add;
+
+	StepperTiming() : construct(0), solveLinear(0), lineSearch(0), check(0), init(0), dot(0), add(0), multiply(0) {}
 
 	void reset()
 	{
@@ -31,6 +36,11 @@ struct StepperTiming
 		solveLinear = 0;
 		lineSearch = 0;
 		check = 0;
+
+		init = 0;
+		multiply = 0;
+		dot = 0;
+		add = 0;
 	}
 
 	double sum() const
@@ -44,6 +54,12 @@ struct StepperTiming
 		solveLinear += other.solveLinear;
 		lineSearch += other.lineSearch;
 		check += other.check;
+
+		init += other.init;
+		multiply += other.multiply;
+		dot += other.dot;
+		add += other.add;
+
 		return *this;
 	}
 
@@ -53,6 +69,12 @@ struct StepperTiming
 		solveLinear /= time;
 		lineSearch /= time;
 		check /= time;
+
+		init /= time;
+		multiply /= time;
+		dot /= time;
+		add /= time;
+
 		return *this;
 	}
 
@@ -63,6 +85,10 @@ struct StepperTiming
 			<< "  LS: " << lineSearch 
 			<< "  CHECK: " << check 
 			<< "  SUM: " << sum() << std::endl;
+		std::cout << "Init: " << init
+			<< "  mul: " << multiply
+			<< "  dot: " << dot
+			<< "  add: " << add << std::endl;
 	}
 };
 
@@ -115,6 +141,9 @@ protected:
 	Scalar* m_tmpValue;
 
 	StrandForces m_dynamics; // device pointer wrapper
+
+	Scalar* x_k, *r_k, *Ap, *p_k;
+	void solveLinearSys(const HessianMatrix* A, const Scalar* b);
 };
 
 #endif // !NEWTON_STEPPER_H

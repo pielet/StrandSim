@@ -8,7 +8,7 @@
 const double tol = 1e-12;
 
 template <typename ScalarT>
-__global__ void addInDiagonalKernal (MatrixWrapper<ScalarT>* matrix, ScalarT* m)
+__global__ void addInDiagonalKernel (MatrixWrapper<ScalarT>* matrix, ScalarT* m)
 {
 	int i = threadIdx.x;
 
@@ -20,6 +20,24 @@ CUDA_CALLABLE_MEMBER void MatrixWrapper<ScalarT>::addInPlace(int x, int y, Scala
 {
 	ScalarT* value_ptr = m_value + m_rowPtr[x] + (y - m_colIdx[m_rowPtr[x]]);
 	*value_ptr += value;
+}
+
+template <typename ScalarT>
+__global__ void multiplyVecKernel(ScalarT* out, const MatrixWrapper<ScalarT>* matrix, const ScalarT* in)
+{
+	int i = threadIdx.x;
+
+	extern __shared__ ScalarT in_vec[];
+	in_vec[i] = in[i];
+	__syncthreads();
+
+	ScalarT sum = 0.;
+	for (int j = matrix->m_rowPtr[i]; j < matrix->m_rowPtr[i + 1]; ++j)
+	{
+		sum += matrix->m_value[j] * in_vec[matrix->m_colIdx[j]];
+	}
+	
+	out[i] = sum;
 }
 
 template <typename ScalarT, int w>
@@ -100,6 +118,12 @@ BandMatrix<ScalarT, w>::~BandMatrix()
 }
 
 template <typename ScalarT, int w>
+void BandMatrix<ScalarT, w>::multiplyVec(Scalar* out, const Scalar* in) const
+{
+	multiplyVecKernel <<< 1, m_n, m_n * sizeof(ScalarT), m_stream >>> (out, m_matrix, in);
+}
+
+template <typename ScalarT, int w>
 void BandMatrix<ScalarT, w>::multiplyInPlace(ScalarT t)
 {
 	int block = 32;
@@ -110,7 +134,7 @@ void BandMatrix<ScalarT, w>::multiplyInPlace(ScalarT t)
 template <typename ScalarT, int w>
 void BandMatrix<ScalarT, w>::addInDiagonal(ScalarT* m)
 {
-	addInDiagonalKernal <<< 1, m_n, 0, m_stream >>> (m_matrix, m);
+	addInDiagonalKernel <<< 1, m_n, 0, m_stream >>> (m_matrix, m);
 }
 
 template <typename ScalarT, int w>
