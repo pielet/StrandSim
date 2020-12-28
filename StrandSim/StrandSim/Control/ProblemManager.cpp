@@ -1,12 +1,13 @@
 #include "ProblemManager.h"
 #include <fstream>
-#include "../Dynamic/ElasticStrand.h"
 #include "../Dynamic/StepperManager.h"
 #include "../Render/StrandRenderer.h"
 
+int g_threadsPerBlock = 32;
+int g_maxVertex = 1;
+
 ProblemManager::ProblemManager(const std::string& xml_file)
 {
-	
 	loadXMLFile(xml_file);
 }
 
@@ -43,33 +44,53 @@ void ProblemManager::loadXMLFile(const std::string& xml_file)
 	std::cout << "Finish loading parameters." << std::endl;
 
 	// Load hairs
-	int num_strands = 0;
-	for (rapidxml::xml_node<>* nd = scene->first_node("Strand"); nd; nd = nd->next_sibling("Strand")) ++num_strands;
-	m_strands.reserve(num_strands);
-	m_streams.resize(num_strands);
-	int idx = 0;
-	for (rapidxml::xml_node<>* nd = scene->first_node("Strand"); nd; nd = nd->next_sibling("Strand"))
+	loadHairs(scene);
+	for (auto nd = scene->first_node("hairobj"); nd; nd = nd->next_sibling("hairobj"))
+		loadHairobj(nd);
+	int num_strands = m_strand_ptr.size() - 1;
+	int num_particles = m_particle_x.size();
+	std::cout << "Finish loading " << num_particles << " particles and " << num_strands << " strands." << std::endl;
+
+	// Wrap data into device-friendly array
+	int num_dofs = 4 * num_particles - num_strands;
+	Eigen::VecXx v(num_dofs);
+	Eigen::VecXx x(num_dofs);
+	v.setZero();
+	x.setZero();
+
+	for (int i = 0; i < num_strands; ++i)
 	{
-		cudaStreamCreate(&m_streams[idx]);
-		loadStrand(idx, nd, m_streams[idx]);
+		g_maxVertex = std::max(g_maxVertex, m_strand_ptr[i + 1] - m_strand_ptr[i]);
+		for (int j = m_strand_ptr[i]; j < m_strand_ptr[i + 1]; ++j)
+		{
+			x.segment<3>(4 * j - i) = m_particle_x[j];
+			v.segment<3>(4 * j - i) = m_particle_v[j];
+		}
+	}
+
+	int num_fixed = m_fixed.size();
+	std::vector<int> fixed_idx(num_fixed);
+	Eigen::VecXx fixed_pos(3 * num_fixed);
+	int idx = 0;
+	for (const auto& item : m_fixed)
+	{
+		fixed_idx[idx] = item.first;
+		fixed_pos.segment<3>(3 * idx) = item.second;
 		++idx;
 	}
-	std::cout << "Finish loading " << num_strands << " strands." << std::endl;
 
-	// Create stepper
-	m_stepper = new StepperManager(m_strands, &m_simulationParams, m_dt);
-	std::cout << "Created stepper manager." << std::endl;
+	m_stepper = new StepperManager(
+		m_dt, num_dofs, num_fixed, x.data(), v.data(), m_strand_ptr, fixed_idx.data(), fixed_pos.data(), 
+		&m_simulationParams, &m_strandParams, &m_collisionParams);
+	m_renderer = new StrandRenderer(num_particles, num_particles - num_strands, m_strandParams.m_radius, m_strand_ptr, m_stepper);
+
+	std::cout << "Finish initialization." << std::endl;
 }
 
 void ProblemManager::clear()
 {
 	delete m_stepper;
-	for (int i = 0; i < m_strands.size();++i) 
-	{
-		delete m_renderer[i];
-		delete m_strands[i];
-		cudaStreamDestroy(m_streams[i]);
-	}
+	delete m_renderer;
 }
 
 void ProblemManager::step()
@@ -80,14 +101,12 @@ void ProblemManager::step()
 
 	cudaDeviceSynchronize();
 
-	for (StrandRenderer* renderer : m_renderer)
-		renderer->ackGeometryChange();
+	m_renderer->ackGeometryChange();
 }
 
 void ProblemManager::render(const Shader* shader)
 {
-	for (StrandRenderer* renderer : m_renderer)
-		renderer->render(shader);
+	m_renderer->render(shader);
 }
 
 void ProblemManager::loadParameters(rapidxml::xml_node<>* doc)
@@ -112,20 +131,16 @@ void ProblemManager::loadParameters(rapidxml::xml_node<>* doc)
 	loadParam(nd, "pruneExternalCollision", m_simulationParams.m_pruneExternalCollision);
 	loadParam(nd, "pruneSelfCollision", m_simulationParams.m_pruneSelfCollision);
 
-	for (rapidxml::xml_node<>* nd = doc->first_node("StrandParameters"); nd; nd = nd->next_sibling("StrandParameters"))
-	{
-		StrandParameters param;
-		loadParam(nd, "radius", param.m_radius);
-		loadParam(nd, "youngsModulus", param.m_youngsModulus);
-		loadParam(nd, "poissonRatio", param.m_poissonRatio);
-		loadParam(nd, "density", param.m_density);
-		loadParam(nd, "stretchMultiplier", param.m_stretchMultiplier);
-		param.m_shearModulus = param.m_youngsModulus / (1 + param.m_poissonRatio) / 2;
-		param.m_ks = M_PI * square(param.m_radius) * param.m_youngsModulus;
-		param.m_kt = M_PI / 2 * biquad(param.m_radius) * param.m_shearModulus;
-		param.m_kb = M_PI / 4 * biquad(param.m_radius) * param.m_youngsModulus;
-		m_strandParams.push_back(param);
-	}
+	nd = doc->first_node("StrandParameters");
+	loadParam(nd, "radius", m_strandParams.m_radius);
+	loadParam(nd, "youngsModulus", m_strandParams.m_youngsModulus);
+	loadParam(nd, "poissonRatio", m_strandParams.m_poissonRatio);
+	loadParam(nd, "density", m_strandParams.m_density);
+	loadParam(nd, "stretchMultiplier", m_strandParams.m_stretchMultiplier);
+	m_strandParams.m_shearModulus = m_strandParams.m_youngsModulus / ((1 + m_strandParams.m_poissonRatio) * 2);
+	m_strandParams.m_ks = M_PI * square(m_strandParams.m_radius) * m_strandParams.m_youngsModulus * m_strandParams.m_stretchMultiplier;
+	m_strandParams.m_kt = M_PI / 2 * biquad(m_strandParams.m_radius) * m_strandParams.m_shearModulus;
+	m_strandParams.m_kb = M_PI / 4 * biquad(m_strandParams.m_radius) * m_strandParams.m_youngsModulus;
 
 	nd = doc->first_node("CollisionParameters");
 	loadParam(nd, "hairHairFrictionCoefficient", m_collisionParams.m_hairHairFrictionCoefficient);
@@ -135,43 +150,128 @@ void ProblemManager::loadParameters(rapidxml::xml_node<>* doc)
 	loadParam(nd, "repulseRadius", m_collisionParams.m_repulseRadius);
 }
 
-void ProblemManager::loadStrand(int global_idx, rapidxml::xml_node<>* nd, cudaStream_t stream)
+void ProblemManager::loadHairs(rapidxml::xml_node<>* doc)
 {
-	int num_particles = 1;
-	loadAttrib(nd, "count", num_particles);
-	Eigen::VecXx particles = Eigen::VecXx::Zero(4 * num_particles - 1);
+	int num_particles = 0;
+	int num_strands = 0;
+	for (rapidxml::xml_node<>* nd = doc->first_node("particle"); nd; nd = nd->next_sibling("particle")) ++num_particles;
+	for (rapidxml::xml_node<>* nd = doc->first_node("hair"); nd; nd = nd->next_sibling("hair")) ++num_strands;
+	m_particle_x.resize(num_particles);
+	m_particle_v.resize(num_particles);
+	m_strand_ptr.resize(num_strands + 1);
 
-	int param = 0;
-	loadAttrib(nd, "param", param);
-	if (param >= m_strandParams.size())
+	// load particles
+	int idx = 0;
+	Eigen::Vec3x pos, vel;
+	int fixed;
+	std::string atrrib;
+	for (rapidxml::xml_node<>* nd = doc->first_node("particle"); nd; nd = nd->next_sibling("particle"))
 	{
-		std::cerr << "Strand " << global_idx << " has WRONG parameter index" << std::endl;
+		atrrib = nd->first_attribute("x")->value();
+		std::stringstream(atrrib) >> pos(0) >> pos(1) >> pos(2);
+		atrrib = nd->first_attribute("v")->value();
+		std::stringstream(atrrib) >> vel(0) >> vel(1) >> vel(2);
+
+		fixed = 0;
+		loadAttrib(nd, "fixed", fixed);
+		if (fixed) m_fixed[idx] = pos;
+
+		m_particle_x[idx] = pos;
+		m_particle_v[idx] = vel;
+
+		idx++;
+	}
+
+	// load strands
+	int start;
+	idx = 0;
+	for (rapidxml::xml_node<>* nd = doc->first_node("hair"); nd; nd = nd->next_sibling("hair"))
+	{
+		loadAttrib(nd, "start", start);
+		m_strand_ptr[idx++] = start;
+	}
+	m_strand_ptr[idx] = num_particles;
+}
+
+void ProblemManager::loadHairobj(rapidxml::xml_node<>* nd)
+{
+	std::string hairobj_file;
+	loadAttrib(nd, "filename", hairobj_file);
+	if (hairobj_file.empty())
+	{
+		std::cerr << "Must input a hairobj file. EXIT." << std::endl;
 		exit(-1);
 	}
 
-	FixedMap fixed_map;
+	std::string line;
+	std::ifstream ifs(hairobj_file);
 
-	int idx = 0;
-	for (rapidxml::xml_node<>* subnd = nd->first_node("particle"); subnd; subnd = subnd->next_sibling("particle"))
-	{
-		Eigen::Vec3x pos;
-		int fixed = 0;
-
-		std::string pos_string = subnd->first_attribute("x")->value();
-		std::stringstream(pos_string) >> pos(0) >> pos(1) >> pos(2);
-		particles.segment<3>(4 * idx) = pos;
-
-		loadAttrib(subnd, "fixed", fixed);
-		if (fixed > 0)
-		{
-			fixed_map[idx] = pos;
-		}
-		++idx;
+	if (ifs.fail()) {
+		std::cerr << "Failed to read file: " << hairobj_file << ". EXIT." << std::endl;
+		exit(-1);
 	}
-	assert(idx == num_particles);
 
-	m_strands.push_back(new ElasticStrand(global_idx, particles.size(), particles.data(), fixed_map, &m_strandParams[param], stream));
-	m_renderer.push_back(new StrandRenderer(m_strands.back(), stream));
+	// load fixed indices info
+	auto fixed_node = nd->first_node("fixed");
+	int start_vtx = 0;
+	int end_vtx = 0;
+	if (fixed_node)
+	{
+		loadAttrib(fixed_node, "start", start_vtx);
+		loadAttrib(fixed_node, "end", end_vtx);
+	}
+
+	// check particles and strands number
+	int num_particles = 0;
+	int num_strands = 0;
+	while (std::getline(ifs, line))
+	{
+		if (line[0] == 'v') ++num_particles;
+		if (line[0] == 'l') ++num_strands;
+	}
+	int vtx_base = m_particle_x.size();
+	int strand_base = m_strand_ptr.size() - 1;
+	m_particle_x.resize(vtx_base + num_particles);
+	m_particle_v.resize(vtx_base + num_particles, Eigen::Vec3x::Zero());
+	m_strand_ptr.resize(strand_base + num_strands + 1);
+
+	// load
+	int vtx_idx = 0;
+	int strand_idx = 0;
+	ifs.clear();
+	ifs.seekg(0);
+	while (std::getline(ifs, line))
+	{
+		std::vector<std::string> tokens = tokenize(line, ' ');
+		if (tokens[0] == "v" && tokens.size() == 4)		// vertex
+		{
+			Eigen::Vec3x pos;
+			for (int i = 0; i < 3; ++i) {
+				std::stringstream(tokens[i + 1]) >> pos(i);
+			}
+			m_particle_x[vtx_base + vtx_idx] = pos;
+			++vtx_idx;
+		}
+		else if (tokens[0] == "l" && tokens.size() > 1)		// hair
+		{
+			int idx;
+			std::stringstream(tokens[1]) >> idx;
+			m_strand_ptr[strand_base + strand_idx] = vtx_base + idx - 1;
+			++strand_idx;
+
+			// fixed points
+			for (int i = start_vtx; i < end_vtx; ++i)
+			{
+				std::stringstream(tokens[i + 1]) >> idx;
+				m_fixed[vtx_base + idx - 1] = m_particle_x[vtx_base + idx - 1];
+			}
+		}
+	}
+	assert(vtx_idx == num_particles);
+	assert(strand_idx == num_strands);
+	m_strand_ptr[strand_base + strand_idx] = vtx_base + vtx_idx;
+
+	ifs.close();
 }
 
 template<typename T>
@@ -205,4 +305,30 @@ static bool ProblemManager::loadAttrib(rapidxml::xml_node<>* nd, const char* nam
 		return true;
 	}
 	else return false;
+}
+
+std::vector<std::string> ProblemManager::tokenize(const std::string& str, const char chr)
+{
+	std::vector<std::string> tokens;
+
+	std::string::size_type substring_start = 0;
+	std::string::size_type substring_end = str.find_first_of(chr, substring_start);
+	while (substring_end != std::string::npos)
+	{
+		tokens.emplace_back(str.substr(substring_start, substring_end - substring_start));
+		substring_start = substring_end + 1;
+		substring_end = str.find_first_of(chr, substring_start);
+	}
+	// Grab the trailing substring, if present
+	if (substring_start < str.size())
+	{
+		tokens.emplace_back(str.substr(substring_start));
+	}
+	// Case of final character the delimiter
+	if (str.back() == chr)
+	{
+		tokens.emplace_back("");
+	}
+
+	return tokens;
 }

@@ -1,3 +1,4 @@
+/cuda_debug/
 /StrandSim/StrandSim/x64/
 *.pdb
 *.vcxproj.user

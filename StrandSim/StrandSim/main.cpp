@@ -149,6 +149,8 @@ int main(int argc, char** argv)
 	glutMouseWheelFunc(wheelScroll);
 
 	// scene
+	if (std::string(typeid(Scalar).name()) == std::string("double"))
+		cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte);
 	g_shader = new Shader("Render/shader.vs", "Render/shader.fs");
 	g_camera = new Camera(g_window_width, g_window_height);
 	g_problem = new ProblemManager("../Assets/test.xml");

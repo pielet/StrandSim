@@ -3,13 +3,13 @@
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <rapidxml.hpp>
 #include <cuda_runtime.h>
 
 #include "Parameters.h"
 #include "../Utils/EigenDef.h"
 
-class ElasticStrand;
 class StrandRenderer;
 class StepperManager;
 class Shader;
@@ -32,8 +32,8 @@ public:
 
 protected:
 	void loadParameters(rapidxml::xml_node<>* doc);
-
-	void loadStrand(int global_idx, rapidxml::xml_node<>* nd, cudaStream_t stream);
+	void loadHairs(rapidxml::xml_node<>* doc);
+	void loadHairobj(rapidxml::xml_node<>* doc);
 
 	void loadExternalObject();
 	void loadScript();
@@ -44,16 +44,23 @@ protected:
 	template<typename T>
 	static bool loadAttrib(rapidxml::xml_node<>* nd, const char* name, T& param);
 
+	static std::vector<std::string> tokenize(const std::string& str, const char chr);
+
 	Scalar m_duration;
 	Scalar m_dt;
 
 	SimulationParameters m_simulationParams;
-	std::vector<StrandParameters> m_strandParams;
+	StrandParameters m_strandParams;
 	CollisionParameters m_collisionParams;
 
-	std::vector<ElasticStrand*> m_strands;
-	std::vector<StrandRenderer*> m_renderer;
-	std::vector<cudaStream_t> m_streams;
+	std::vector<Eigen::Vec3x> m_particle_x;
+	std::vector<Eigen::Vec3x> m_particle_v;
+
+	std::map<int, Eigen::Vec3x> m_fixed;
+
+	std::vector<int> m_strand_ptr;
+
+	StrandRenderer* m_renderer;
 	StepperManager* m_stepper;
 };
 

@@ -1,16 +1,17 @@
 #ifndef STRAND_RENDERER_H
 #define STRAND_RENDERER_H
 
+#include <vector>
 #include <GL/glew.h>
 #include <cuda_runtime.h>
 
-class ElasticStrand;
 class Shader;
+class StepperManager;
 
 class StrandRenderer
 {
 public:
-	StrandRenderer(const ElasticStrand* strand, cudaStream_t stream);
+	StrandRenderer(int num_vertices, int num_edges, float radius, const std::vector<int>& strand_ptr, const StepperManager* stepper);
 	~StrandRenderer();
 
 	void render(const Shader* shader);
@@ -19,12 +20,17 @@ public:
 protected:
 	void updateVertices();
 
-	cudaStream_t m_stream;
-	const ElasticStrand* m_strand;
+	int m_numVertices;
+	int m_numEdges;
+	float m_radius;
+	const std::vector<int>& m_strand_ptr;
+
+	const StepperManager* m_stepper;
 
 	bool m_geometryChanged;
 
 	GLuint m_strandVerticesBuffer;
+	GLuint m_strandIndicesBuffer;
 	GLuint m_quadVerticesBuffer;
 	GLuint m_quadIndicesBuffer;
 

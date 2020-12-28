@@ -1,11 +1,17 @@
 #ifndef VECTORS_H
 #define VECTORS_H
 
-#include <cuda.h>
-#include <cuda_runtime.h>
 #include <assert.h>
 #include <stdio.h>
+
+#include <cuda_runtime.h>
+
 #include "../Control/Parameters.h"
+
+extern int g_threadsPerBlock;
+extern int g_maxVertex;
+
+#define threadSizeof(n) ((n + g_threadsPerBlock - 1) & ~(g_threadsPerBlock - 1))
 
 template <typename T> __device__ T SQRT(const T& x);
 template <> __device__ __forceinline__ double SQRT(const double& x)
@@ -37,6 +43,24 @@ template <> __device__ __forceinline__ float MAX(const float& x, const float& y)
 	return fmaxf(x, y);
 }
 
+#if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600 
+#else
+__forceinline__ __device__ double atomicAdd(double* address, double val)
+{
+	unsigned long long int* address_as_ull = (unsigned long long int*)address;
+	unsigned long long int old = *address_as_ull, assumed;
+
+	do {
+		assumed = old;
+		old = atomicCAS(address_as_ull, assumed,
+			__double_as_longlong(val + __longlong_as_double(assumed)));
+
+		// Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
+	} while (assumed != old);
+
+	return __longlong_as_double(old);
+}
+#endif
 
 template <typename T, int n>
 struct Vec
@@ -86,11 +110,24 @@ struct Vec
 		for (int i = 0; i < n; ++i) value[i] += v(i);
 		return *this;
 	}
+	__device__ Vec<T, n> operator*=(const T& a)
+	{
+		for (int i = 0; i < n; ++i) value[i] *= a;
+		return *this;
+	}
 	__host__ __device__ T& operator()(int i)
 	{
 		return value[i];
 	}
 	__host__ __device__ const T& operator()(int i) const
+	{
+		return value[i];
+	}
+	__host__ __device__ T& operator[](int i)
+	{
+		return value[i];
+	}
+	__host__ __device__ const T& operator[](int i) const
 	{
 		return value[i];
 	}
@@ -142,6 +179,14 @@ struct Vec
 	{
 		return *this / norm();
 	}
+	__device__ void normalize()
+	{
+		*this /= norm();
+	}
+	__device__ void setZero()
+	{
+		for (int i = 0; i < n; ++i) value[i] = 0.;
+	}
 	__device__ Vec<T, 3> cross(const Vec<T, 3> & a) const
 	{
 		Vec<T, 3> vec;
@@ -173,6 +218,12 @@ struct Vec
 	static __device__ Vec<T, n> Zero()
 	{
 		return Vec<T, n>();
+	}
+	static __device__ Vec<T, n> One()
+	{
+		Vec<T, n> vec;
+		for (int i = 0; i < n; ++i) vec(i) = 1.;
+		return vec;
 	}
 };
 
@@ -255,6 +306,14 @@ struct Mat
 		}
 		return mat;
 	}
+	__device__ Mat<T, n, m> operator/(T a) const
+	{
+		Mat<T, n, m> mat;
+		for (int i = 0; i < n; ++i) for (int j = 0; j < m; ++j) {
+			mat(i, j) = value[i][j] / a;
+		}
+		return mat;
+	}
 	__device__ Mat<T, n, m> operator*=(T a)
 	{
 		for (int i = 0; i < n; ++i) for (int j = 0; j < m; ++j) {
@@ -301,6 +360,30 @@ struct Mat
 		}
 	}
 
+	template <int nn, int mm>
+	__device__ void addAt(int si, int sj, const Mat<T, nn, mm>& mat)
+	{
+		assert((si + nn <= n) && (sj + mm <= m));
+		for (int i = 0; i < nn; ++i) for (int j = 0; j < mm; ++j) {
+			value[si + i][sj + j] += mat(i, j);
+		}
+	}
+
+	template <bool vertical = true, int nn = 3>
+	__device__ void addAt(int si, int sj, const Vec<T, nn>& vec)
+	{
+		if constexpr (vertical)
+		{
+			assert((si + nn <= n) && (sj < m));
+			for (int i = 0; i < nn; ++i) value[si + i][sj] += vec(i);
+		}
+		else
+		{
+			assert((si < n) && (sj + nn <= m));
+			for (int j = 0; j < nn; ++j) value[si][sj + j] += vec(j);
+		}
+	}
+
 	template <int nn>
 	__device__ Vec<T, nn> at(int si, int sj) const
 	{
@@ -315,6 +398,13 @@ struct Mat
 		assert(n == m);
 		Mat<T, n, n> mat;
 		for (int i = 0; i < n; ++i) mat(i, i) = 1.;
+		return mat;
+	}
+	static __device__ Mat<T, n, m> Ones()
+	{
+		Mat<T, n, m> mat;
+		for (int i = 0; i < n; ++i) for (int j = 0; j < m; ++j)
+			mat[i][j] = 1.;
 		return mat;
 	}
 };
@@ -394,11 +484,12 @@ template <typename T, int n, int m>
 __device__ Mat<T, n, n> symProd(const Mat<T, n, m>& A)
 {
 	Mat<T, n, n> B;
+
 	for (int i = 0; i < n; ++i) for (int j = 0; j <= i; ++j) {
-		T vel = 0;
+		T val = 0;
 		for (int k = 0; k < m; ++k)
-			vel += A(i, k) * A(j, k);
-		B(i, j) = B(j, i) = vel;
+			val += A(i, k) * A(j, k);
+		B(i, j) = B(j, i) = val;
 	}
 	return B;
 }
@@ -412,92 +503,33 @@ __device__ bool isSymmetric(const Mat<T, n, n>& A)
 	return true;
 }
 
-/* VecXx functions ******************************************************************************
- */
+/* Vector geometry function */
 
-// Set every entry in vec to a
+// Rotates v around z by theta * pi, assuming z is unit vector.
 template <typename T>
-__global__ void set(int size, T* vec, T a)
+__device__ Vec<T, 3> findNormal(const Vec<T, 3>& u)
 {
-	int i = blockDim.x * blockIdx.x + threadIdx.x;
-	if (i < size) vec[i] = a;
-}
+	Vec<T, 3> normal;
+	int maxCoordinate = 0;
 
-template <typename T, typename ScalarT = Scalar>
-__global__ void assign(T* a, const T* b, ScalarT alpha = 1.0)
-{
-	int i = threadIdx.x;
-	a[i] = alpha * b[i];
-}
-
-// vec *= t
-template <typename T>
-__global__ void multiply(int size, T* vec, T t)
-{
-	int i = blockDim.x * blockIdx.x + threadIdx.x;
-	if (i < size) vec[i] *= t;
-}
-
-// Compute c = a + alpha * b
-template <typename T>
-__global__ void add(T* c, const T* a, const T* b, T alpha = 1.0)
-{
-	int i = threadIdx.x;
-	c[i] = a[i] + alpha * b[i];
-}
-
-// res = a^T * M * b
-template <typename T>
-__global__ void dot(T* res, const T* a, const T* b, const T* m)
-{
-	int i = threadIdx.x;
-
-	extern __shared__ T c[];
-	c[i] = a[i] * m[i] * b[i];
-	__syncthreads();
-
-	int length = blockDim.x;
-	int strip = (length + 1) / 2;
-	while (length > 1)
+	for (int i = 0; i < 3; ++i)
 	{
-		if (i < strip && i + strip < length)
-			c[i] += c[i + strip];
-		__syncthreads();
-		length = strip;
-		strip = (length + 1) / 2;
+		if (FAB(u(i)) < 1e-12)
+		{
+			normal(i) = 1;
+			return normal;
+		}
+		if (FAB(u(i)) > FAB(u[maxCoordinate]))
+			maxCoordinate = i;
 	}
 
-	res[i] = c[i];
+	int otherCoordinate = (maxCoordinate + 1) % 3;
+	normal[otherCoordinate] = u[maxCoordinate];
+	normal[maxCoordinate] = -u[otherCoordinate];
+
+	return normal.normalized();
 }
 
-template <typename T>
-__global__ void dot(T* res, const T* a, const T* b)
-{
-	int i = threadIdx.x;
-
-	extern __shared__ T c[];
-	c[i] = a[i] * b[i];
-	__syncthreads();
-
-	int length = blockDim.x;
-	int strip = (length + 1) / 2;
-	while (length > 1)
-	{
-		if (i < strip && i + strip < length)
-			c[i] += c[i + strip];
-		__syncthreads();
-		length = strip;
-		strip = (length + 1) / 2;
-	}
-
-	res[i] = c[i];
-}
-
-/* Vector geometry function ***************************************************************
- */
-
-/* Rotates v around z by theta * pi, assuming z is unit vector.
- */
 template <typename T>
 __device__ void rotateAxisAngle(Vec<T, 3>& v, const Vec<T, 3>& z, T theta)
 {
@@ -507,8 +539,7 @@ __device__ void rotateAxisAngle(Vec<T, 3>& v, const Vec<T, 3>& z, T theta)
 	v = c * v + s * z.cross(v) + z.dot(v) * (1 - c) * z;
 }
 
-/* Computes the signed angle from u to v. Rotation is measured around n
- */
+// Computes the signed angle from u to v. Rotation is measured around n
 template <typename T>
 __device__ T signedAngle(const Vec<T, 3>& u, const Vec<T, 3>& v, const Vec<T, 3>& n)
 {
@@ -519,8 +550,7 @@ __device__ T signedAngle(const Vec<T, 3>& u, const Vec<T, 3>& v, const Vec<T, 3>
 	return angle;
 }
 
-/* Parallel-transport u along t0->t1, assuming u is orthogonal to t0 and all are unit vectors
- */
+// Parallel-transport u along t0->t1, assuming u is orthogonal to t0 and all are unit vectors
 template <typename T>
 __device__ Vec<T, 3> orthonormalParallelTransport(const Vec<T, 3>& u, const Vec<T, 3>& t0, const Vec<T, 3>& t1)
 {
@@ -534,6 +564,43 @@ __device__ Vec<T, 3> orthonormalParallelTransport(const Vec<T, 3>& u, const Vec<
 	Vec<T, 3> n1 = t1.cross(b);
 
 	return u.dot(n0) * n1 + u.dot(b) * b;
+}
+
+/* Global functions */
+
+template <typename T>
+__global__ void cwiseMultiply(int n, const T* a, const T* b, T* c)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= n) return;
+
+	c[i] = a[i] * b[i];
+}
+
+template <typename T>
+__global__ void cwiseAdd(int n, const T* a, const T* b, T* c)
+{
+	int i = blockDim.x * blockIdx.x + threadIdx.x;
+	if (i >= n) return;
+
+	c[i] = a[i] + b[i];
+}
+
+template <typename T>
+__device__ void reduction(int tid, int n, T* shared_mem)
+{
+	int length = n;
+	int strip = (length + 1) / 2;
+	while (length > 1)
+	{
+		if (tid < strip && tid + strip < length)
+		{
+			shared_mem[tid] += shared_mem[tid + strip];
+		}
+		__syncthreads();
+		length = strip;
+		strip = (length + 1) / 2;
+	}
 }
 
 #endif // !VECTORS_H

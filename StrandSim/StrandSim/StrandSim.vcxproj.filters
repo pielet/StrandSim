@@ -24,9 +24,6 @@
     <ClCompile Include="Control\ProblemManager.cpp">
       <Filter>Control</Filter>
     </ClCompile>
-    <ClCompile Include="Dynamic\StepperManager.cpp">
-      <Filter>Dynamic</Filter>
-    </ClCompile>
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -42,25 +39,10 @@
     <ClInclude Include="Control\ProblemManager.h">
       <Filter>Control</Filter>
     </ClInclude>
-    <ClInclude Include="Dynamic\ElasticStrand.h">
-      <Filter>Dynamic</Filter>
-    </ClInclude>
     <ClInclude Include="Control\Parameters.h">
       <Filter>Control</Filter>
     </ClInclude>
-    <ClInclude Include="Render\StrandRenderer.h">
-      <Filter>Render</Filter>
-    </ClInclude>
-    <ClInclude Include="Dynamic\StrandState.h">
-      <Filter>Dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="Dynamic\StrandForces.h">
-      <Filter>Dynamic</Filter>
-    </ClInclude>
     <ClInclude Include="Dynamic\BandMatrix.h">
-      <Filter>Dynamic</Filter>
-    </ClInclude>
-    <ClInclude Include="Dynamic\NewtonStepper.h">
       <Filter>Dynamic</Filter>
     </ClInclude>
     <ClInclude Include="Utils\EigenDef.h">
@@ -75,24 +57,36 @@
     <ClInclude Include="Utils\CUDAMathDef.fwd.h">
       <Filter>Utils</Filter>
     </ClInclude>
+    <ClInclude Include="Dynamic\StrandStates.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\helper_cuda.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils\Cublas.h">
+      <Filter>Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Dynamic\LinearSolver.h">
+      <Filter>Dynamic</Filter>
+    </ClInclude>
+    <ClInclude Include="Render\StrandRenderer.h">
+      <Filter>Render</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="Render\StrandRenderer.cu">
       <Filter>Render</Filter>
     </CudaCompile>
-    <CudaCompile Include="Dynamic\StrandState.cu">
-      <Filter>Dynamic</Filter>
-    </CudaCompile>
-    <CudaCompile Include="Dynamic\ElasticStrand.cu">
-      <Filter>Dynamic</Filter>
-    </CudaCompile>
-    <CudaCompile Include="Dynamic\StrandForces.cu">
-      <Filter>Dynamic</Filter>
-    </CudaCompile>
     <CudaCompile Include="Dynamic\BandMatrix.cu">
       <Filter>Dynamic</Filter>
     </CudaCompile>
-    <CudaCompile Include="Dynamic\NewtonSolver.cu">
+    <CudaCompile Include="Dynamic\StrandStates.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\StepperManager.cu">
+      <Filter>Dynamic</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Dynamic\LinearSolver.cu">
       <Filter>Dynamic</Filter>
     </CudaCompile>
   </ItemGroup>

@@ -57,7 +57,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cusolver.lib;cusparse.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cublas.lib;cusolver.lib;cusparse.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -79,7 +79,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cusolver.lib;cusparse.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>cublas.lib;cusolver.lib;cusparse.lib;cudart_static.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;freeglut.lib;glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
@@ -90,7 +90,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Control\ProblemManager.cpp" />
-    <ClCompile Include="Dynamic\StepperManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Render\Camera.cpp" />
     <ClCompile Include="Render\Shader.cpp" />
@@ -99,25 +98,24 @@
     <ClInclude Include="Control\Parameters.h" />
     <ClInclude Include="Control\ProblemManager.h" />
     <ClInclude Include="Dynamic\BandMatrix.h" />
-    <ClInclude Include="Dynamic\ElasticStrand.h" />
-    <ClInclude Include="Dynamic\NewtonStepper.h" />
+    <ClInclude Include="Dynamic\LinearSolver.h" />
     <ClInclude Include="Dynamic\StepperManager.h" />
-    <ClInclude Include="Dynamic\StrandForces.h" />
-    <ClInclude Include="Dynamic\StrandState.h" />
+    <ClInclude Include="Dynamic\StrandStates.h" />
     <ClInclude Include="Render\Camera.h" />
     <ClInclude Include="Render\Shader.h" />
     <ClInclude Include="Render\StrandRenderer.h" />
+    <ClInclude Include="Utils\Cublas.h" />
     <ClInclude Include="Utils\CUDAMathDef.fwd.h" />
     <ClInclude Include="Utils\CUDAMathDef.h" />
     <ClInclude Include="Utils\EigenDef.h" />
+    <ClInclude Include="Utils\helper_cuda.h" />
     <ClInclude Include="Utils\Timer.h" />
   </ItemGroup>
   <ItemGroup>
     <CudaCompile Include="Dynamic\BandMatrix.cu" />
-    <CudaCompile Include="Dynamic\ElasticStrand.cu" />
-    <CudaCompile Include="Dynamic\NewtonSolver.cu" />
-    <CudaCompile Include="Dynamic\StrandForces.cu" />
-    <CudaCompile Include="Dynamic\StrandState.cu" />
+    <CudaCompile Include="Dynamic\LinearSolver.cu" />
+    <CudaCompile Include="Dynamic\StepperManager.cu" />
+    <CudaCompile Include="Dynamic\StrandStates.cu" />
     <CudaCompile Include="Render\StrandRenderer.cu" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
